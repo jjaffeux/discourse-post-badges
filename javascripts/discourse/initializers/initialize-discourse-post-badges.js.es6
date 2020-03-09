@@ -16,7 +16,9 @@ function buildBadge(badge, trustLevel, highestBadge) {
   let iconBody;
 
   if (badge.image) {
-    iconBody = `<img src="${badge.image}"/>`;
+    const img = document.createElement("img");
+    img.setAttribute("src", badge.image);
+    iconBody = img.outerHTML;
   } else if (badge.icon) {
     iconBody = iconHTML(badge.icon);
   }
