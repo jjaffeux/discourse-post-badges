@@ -2,6 +2,7 @@ import { ajax } from "discourse/lib/ajax";
 import { withPluginApi } from "discourse/lib/plugin-api";
 import { iconHTML } from "discourse-common/lib/icon-library";
 import { schedule } from "@ember/runloop";
+import { makeArray } from "discourse-common/lib/helpers";
 
 const BADGE_CLASS = [
   "badge-type-gold",
@@ -41,37 +42,29 @@ function buildBadge(badge, trustLevel, highestBadge) {
   return span;
 }
 
-function loadUserBadges(username, badgeNames) {
+function loadUserBadges(username, displayedBadges) {
   return ajax(`/user-badges/${username}.json`).then(response => {
-    let badgeArray = [];
     let badgePage = "";
 
     const isUserBadgePage = settings.badge_link_destination === USER_BADGE_PAGE;
-
     if (isUserBadgePage) {
       badgePage = `?username=${username}`;
     }
 
-    if (response.badges && response.badges.length) {
-      badgeNames.forEach(name => {
-        response.badges.forEach(badge => {
-          if (badge["name"].toLowerCase() === name.toLowerCase()) {
-            badgeArray.push({
-              icon: badge.icon.replace("fa-", ""),
-              image: badge.image,
-              className: BADGE_CLASS[badge.badge_type_id - 1],
-              name: badge.slug,
-              id: badge.id,
-              badgeGroup: badge.badge_grouping_id,
-              title: badge.description,
-              url: `/badges/${badge.id}/${badge.slug}` + badgePage
-            });
-          }
-        });
+    return makeArray(response.badges)
+      .filter(badge => displayedBadges.includes(badge.name.toLowerCase()))
+      .map(badge => {
+        return {
+          icon: badge.icon.replace("fa-", ""),
+          image: badge.image,
+          className: BADGE_CLASS[badge.badge_type_id - 1],
+          name: badge.slug,
+          id: badge.id,
+          badgeGroup: badge.badge_grouping_id,
+          title: badge.description,
+          url: `/badges/${badge.id}/${badge.slug}${badgePage}`
+        };
       });
-    }
-
-    return badgeArray;
   });
 }
 
@@ -102,11 +95,15 @@ export default {
     withPluginApi("0.8.25", api => {
       const isMobileView = Discourse.Site.currentProp("mobileView");
       const location = isMobileView ? "before" : "after";
-      const badgeNames = settings.badges.split("|").filter(Boolean);
+      const displayedBadges = settings.badges
+        .split("|")
+        .filter(Boolean)
+        .map(badge => badge.toLowerCase());
 
-      api.decorateWidget(`poster-name:${location}`, decorator => {
+      api.decorateWidget(`poster-name:${location}`, (decorator, v, c) => {
+        console.log(decorator, v, c);
         const username = decorator.attrs.username;
-        loadUserBadges(username, badgeNames).then(badges =>
+        loadUserBadges(username, displayedBadges).then(badges =>
           appendBadges(badges, decorator)
         );
 
