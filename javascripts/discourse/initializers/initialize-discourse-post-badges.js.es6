@@ -100,8 +100,7 @@ export default {
         .filter(Boolean)
         .map(badge => badge.toLowerCase());
 
-      api.decorateWidget(`poster-name:${location}`, (decorator, v, c) => {
-        console.log(decorator, v, c);
+      api.decorateWidget(`poster-name:${location}`, decorator => {
         const username = decorator.attrs.username;
         loadUserBadges(username, displayedBadges).then(badges =>
           appendBadges(badges, decorator)
